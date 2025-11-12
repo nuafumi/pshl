@@ -1,3 +1,8 @@
+# Устанавливаем кодировку консоли для корректного отображения русского языка
+[Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(1251)
+[Console]::InputEncoding = [System.Text.Encoding]::GetEncoding(1251)
+$PSConsoleFileEncoding = [System.Text.Encoding]::GetEncoding(1251)
+
 # Логгер HTTP-запросов на порту 1000
 # Записывает в CSV лог: время запроса и IP адрес клиента из локальной сети
 # После записи соединение сбрасывается
@@ -10,14 +15,14 @@ param (
 try {
     # Создаем лог файл с заголовками, если его нет
     if (-not (Test-Path $LogPath)) {
-        "Timestamp,ClientIP,LocalIP" | Out-File -FilePath $LogPath -Encoding UTF8
+        "Timestamp,ClientIP,LocalIP" | Out-File -FilePath $LogPath -Encoding Windows1251
     }
 
     # Получаем локальный IP адрес
     $localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match '^(192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))' } | Select-Object -First 1).IPAddress
     if (-not $localIP) {
         $localIP = "127.0.0.1"
-        Write-Warning "Не удалось определить локальный IP адрес. Используется 127.0.0.1"
+        Write-Host "Не удалось определить локальный IP адрес. Используется 127.0.0.1"
     }
 
     # Создаем TCP listener
@@ -44,13 +49,13 @@ try {
             $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
             
             # Записываем в лог
-            "$timestamp,$clientIP,$localIP" | Out-File -FilePath $LogPath -Append -Encoding UTF8
+            "$timestamp,$clientIP,$localIP" | Out-File -FilePath $LogPath -Append -Encoding Windows1251
             
             Write-Host "[$timestamp] Запрос от: $clientIP"
             
             # Отправляем минимальный HTTP ответ для корректного завершения соединения
             $response = "HTTP/1.1 200 OK`r`nContent-Type: text/plain`r`nContent-Length: 0`r`nConnection: close`r`n`r`n"
-            $buffer = [System.Text.Encoding]::UTF8.GetBytes($response)
+            $buffer = [System.Text.Encoding]::GetEncoding(1251).GetBytes($response)
             $clientStream.Write($buffer, 0, $buffer.Length)
             
             # Закрываем соединение
@@ -59,12 +64,12 @@ try {
             
         }
         catch {
-            Write-Warning "Ошибка при обработке соединения: $_"
+            Write-Host "Ошибка при обработке соединения: $_"
         }
     }
 }
 catch {
-    Write-Error "Критическая ошибка: $_"
+    Write-Host "Критическая ошибка: $_"
 }
 finally {
     # Очищаем ресурсы при завершении
